@@ -69,11 +69,13 @@ class PipeLine(object):
         return one_hotted
 
     def fold_out_split(self, test_size=0.3) -> np.ndarray:
-        x_tr, x_te, y_tr, y_te = train_test_split(self.df_num,  self.df_target,
+        pack = train_test_split(self.df_num,  self.df_target,
                                                   test_size=test_size,
                                                   random_state=self.random_seed)
+        x_tr, x_te, y_tr, y_te = [i.values for i in pack]
+        y_tr, y_te = y_tr.reshape(-1), y_te.reshape(-1)
         if self.viewer:
             print('-'*20, '分割されたデータShape', '-'*20)
             print(f'x_train: {x_tr.shape} x_test: {x_te.shape}')
             print(f'y_train: {y_tr.shape} y_test: {y_te.shape}')
-        return x_tr.values, x_te.values, y_tr.values, y_te.values
+        return x_tr, x_te, y_tr, y_te
