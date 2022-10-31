@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, \
+                            recall_score, f1_score
 
 
 class PipeLine(object):
@@ -70,8 +72,8 @@ class PipeLine(object):
 
     def fold_out_split(self, test_size=0.3) -> np.ndarray:
         pack = train_test_split(self.df_num,  self.df_target,
-                                                  test_size=test_size,
-                                                  random_state=self.random_seed)
+                                test_size=test_size,
+                                random_state=self.random_seed)
         x_tr, x_te, y_tr, y_te = [i.values for i in pack]
         y_tr, y_te = y_tr.reshape(-1), y_te.reshape(-1)
         if self.viewer:
@@ -79,3 +81,15 @@ class PipeLine(object):
             print(f'x_train: {x_tr.shape} x_test: {x_te.shape}')
             print(f'y_train: {y_tr.shape} y_test: {y_te.shape}')
         return x_tr, x_te, y_tr, y_te
+
+
+# evaluation
+def evaluations(model, x_train, x_test, y_train, y_test):
+    evaluate = [accuracy_score, precision_score, recall_score, f1_score]
+    # 訓練データの評価
+    train_pred = model.predict(x_train)
+    train_val = {func.__name__: func(y_train, train_pred) for func in evaluate}
+    # 検証データの評価
+    test_pred = model.predict(x_test)
+    test_val = {func.__name__: func(y_test, test_pred) for func in evaluate}
+    return pd.DataFrame((train_val, test_val), index=['train', 'test'])
