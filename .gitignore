@@ -1,5 +1,6 @@
 講義/
 __pycache__/
+models/
 .ipynb_checkpoints/
 課題.ipynb
 .DS_Store

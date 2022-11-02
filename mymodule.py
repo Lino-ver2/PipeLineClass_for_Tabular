@@ -5,10 +5,14 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
+from sklearn.model_selection import GridSearchCV
+
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
 from sklearn.metrics import accuracy_score, precision_score, \
                             recall_score, f1_score
-
+                            
 
 class PipeLine(object):
     """
@@ -53,7 +57,7 @@ class PipeLine(object):
 
     def __call__(self,
                  data: pd.DataFrame,
-                 numerical=['Age', 'Sex', 'RestingBP', 'Cholesterol',\
+                 numerical=['Age', 'Sex', 'RestingBP', 'Cholesterol', \
                  'FastingBS', 'MaxHR', 'ExerciseAngina', 'Oldpeak'],
                  categorical=['ChestPainType', 'RestingECG', 'ST_Slope'],
                  target=['HeartDisease'],
@@ -102,25 +106,27 @@ class PipeLine(object):
         return x_tr, x_te, y_tr, y_te
 
     def k_fold(self, n_splits=5, to_array=True) -> list[list[np.ndarray]]:
-        kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
-        datasets = []
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=self.random_seed)
+        packs = []
         for train_index, test_index in kf.split(self.df_num):
-            x_tr, x_te = self.df_num.iloc[train_index], self.df_num.iloc[test_index]
-            y_tr, y_te = self.df_target.iloc[train_index], self.df_target.iloc[test_index]
+            x_tr, x_te = self.df_num.iloc[train_index],\
+                         self.df_num.iloc[test_index]
+            y_tr, y_te = self.df_target.iloc[train_index],\
+                         self.df_target.iloc[test_index]
             pack = (x_tr, x_te,  y_tr, y_te)
             if to_array:
                 pack = [unpack.values for unpack in pack]
-            datasets.append(pack)
-        if self.viewer: 
+            packs.append(pack)
+        if self.viewer:
             print(kf.get_n_splits)
-        return datasets
+        return packs
 
     def training(self, valid, Model, valid_args={}, params={}):
         if valid == 'fold_out_split':
-            pack = self.fold_out_split(**valid_args)
+            packs = self.fold_out_split(**valid_args)
             model = Model(**params)
-            model.fit(pack[0], pack[2])
-            evaluations(model, *pack)
+            model.fit(packs[0], packs[2])
+            evaluations(model, *packs)
             return model
 
         if valid == 'k_fold':
@@ -135,6 +141,26 @@ class PipeLine(object):
             return models
 
 
+# グリッドサーチの関数
+def grid_serch_cv(pipe, validation, param_range, param_grid, model):
+    pack = validation()
+    param_range = param_range
+    param_grid = param_grid
+
+    gs = GridSearchCV(estimator=model(), 
+                    param_grid=param_grid,  # 設定した候補を代入
+                    scoring='accuracy', 
+                    refit=True,
+                    cv=10,
+                    n_jobs=-1)
+    gs.fit(pack[0], pack[2])  # x_train = pack[0], y_train = pack[2]
+
+    valid, model = [validation.__name__, model]
+    params = gs.best_params_
+    model = pipe.training(valid=valid, Model=model ,params=params)
+    return model, gs.best_params_
+
+
 # evaluation
 def evaluations(model, x_train, x_test, y_train, y_test):
     evaluate = [accuracy_score, precision_score, recall_score, f1_score]
@@ -147,3 +173,20 @@ def evaluations(model, x_train, x_test, y_train, y_test):
     evals = pd.DataFrame((train_val, test_val), index=['train', 'test'])
     display(evals)
     return evals
+
+
+def ensemble_prediction(models, x, y):
+    try:
+        predict = [model.predict_proba(x) for model in models]
+        predict_sum = np.sum(predict, axis=0)
+        ensemble_prediction = np.array(
+            [np.where(pre[0] < pre[1], 1, 0) for pre in predict_sum]
+            )
+    except AttributeError:
+        print('########## 確率で出力するようパラメータもしくはモデルを設定することを推奨 ############')
+        predict = [model.predict(x) for model in models]
+        predict_sum = np.sum(predict, axis=0)
+        ensemble_prediction = np.array(
+                [np.where(len(models)//2 <= pre, 1, 0) for pre in predict_sum]
+                )
+    return ensemble_prediction
