@@ -155,7 +155,7 @@ def grid_serch_cv(pack, param_grid, model, score='accuracy'):
     return gs_model
 
 
-# 評価使用の関数
+# 評価指標の関数
 def evaluations(model, x_train, x_test, y_train, y_test):
     evaluate = [accuracy_score, precision_score, recall_score, f1_score]
     # 訓練データの評価
