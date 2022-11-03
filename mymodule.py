@@ -6,13 +6,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 from sklearn.model_selection import GridSearchCV
-
-from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
-
 from sklearn.metrics import accuracy_score, precision_score, \
                             recall_score, f1_score
-                            
+
 
 class PipeLine(object):
     """
@@ -27,20 +23,20 @@ class PipeLine(object):
     __call__ :
     インスタンスの生成時に引数でオリジナルデータを渡す
     （引数）
-    data: 使用するオリジナルデータ  (pd.DataFrame
+    data: 使用するオリジナルデータ  (pd.DataFrame)
     numerical: 数値データのカラム名  (list[str])
     categorical: カテゴリデータのカラム名  (list[str])
-    target: 
+    target:
 
     standard_scaler:
     アトリビュートのdf_numを標準化する
     （引数）
     view: 標準化したdf_numを確認できる
 
-    one_hot: 
+    one_hot:
     指定したカラムのdf_catをワンホット化してdf_numにconcatする
     （引数）
-    columns: ワンホット化したいカラム名_ 
+    columns: ワンホット化したいカラム名
     concat: Trueの場合はアトリビュートのself.df_numに連結し更新する
     view: ワンホットされたデータがdf_numにconcatされているのを確認できる
     return: x_train, x_test, y_train, y_test
@@ -51,17 +47,17 @@ class PipeLine(object):
         self.df_num: pd.DataFrame = None
         self.df_cat: pd.DataFrame = None
         self.df_target: pd.DataFrame = None
-        self.viewer = True  # 更新したカラムの表示を切り替え
-        self.viewer_row = 3  # 表示カラムの行数
+        self.viewer = False  # 更新したカラムの表示を切り替え
+        self.viewer_row = 5  # 表示カラムの行数
         self.random_seed = 42  # 乱数シード値
 
     def __call__(self,
                  data: pd.DataFrame,
-                 numerical=['Age', 'Sex', 'RestingBP', 'Cholesterol', \
+                 numerical=['Age', 'Sex', 'RestingBP', 'Cholesterol',\
                  'FastingBS', 'MaxHR', 'ExerciseAngina', 'Oldpeak'],
                  categorical=['ChestPainType', 'RestingECG', 'ST_Slope'],
                  target=['HeartDisease'],
-                 train_flg=True
+                 train_flg=True  # 正解ラベルのないテストデータはFalseを設定
                  ) -> pd.DataFrame:
 
         self.df = data
@@ -83,8 +79,8 @@ class PipeLine(object):
             display(self.df_num.head(self.viewer_row))
         return None
 
-    def one_hot(self, columns: list[str], concat=True) -> pd.DataFrame:
-        one_hotted = pd.get_dummies(self.df_cat[columns])
+    def one_hot(self, columns: list[str]) -> pd.DataFrame:
+        one_hotted = pd.get_dummies(self.df_cat[columns]).reset_index(drop=True)
         self.df_num = pd.concat((self.df_num, one_hotted), axis=1)
         if self.viewer:
             print('-'*20, f'ワンホットされたカラム{columns}', '-'*20)
@@ -121,7 +117,11 @@ class PipeLine(object):
             print(kf.get_n_splits)
         return packs
 
-    def training(self, valid, Model, valid_args={}, params={}):
+    def training(self, valid, Model, valid_args={}, params={}, view=True):
+        if view:
+            print('-'*20, '使用された特徴量', '-'*20)
+            display(self.df_num.head(self.viewer_row))
+
         if valid == 'fold_out_split':
             packs = self.fold_out_split(**valid_args)
             model = Model(**params)
@@ -142,26 +142,20 @@ class PipeLine(object):
 
 
 # グリッドサーチの関数
-def grid_serch_cv(pipe, validation, param_range, param_grid, model):
-    pack = validation()
-    param_range = param_range
-    param_grid = param_grid
-
-    gs = GridSearchCV(estimator=model(), 
-                    param_grid=param_grid,  # 設定した候補を代入
-                    scoring='accuracy', 
-                    refit=True,
-                    cv=10,
-                    n_jobs=-1)
-    gs.fit(pack[0], pack[2])  # x_train = pack[0], y_train = pack[2]
-
-    valid, model = [validation.__name__, model]
-    params = gs.best_params_
-    model = pipe.training(valid=valid, Model=model ,params=params)
-    return model, gs.best_params_
+def grid_serch_cv(pack, param_grid, model, score='accuracy'):
+    gs_model = GridSearchCV(estimator=model(),
+                            param_grid=param_grid,  # 設定した候補を代入
+                            scoring=score,  # デフォルトではaccuracyを基準に探してくれる
+                            refit=True,
+                            cv=10,
+                            n_jobs=-1)
+    # 訓練データで最適なパラメータを交差検証する
+    gs_model.fit(pack[0], pack[2])  # x_train = pack[0], y_train = pack[2]
+    evaluations(gs_model, *pack)
+    return gs_model
 
 
-# evaluation
+# 評価使用の関数
 def evaluations(model, x_train, x_test, y_train, y_test):
     evaluate = [accuracy_score, precision_score, recall_score, f1_score]
     # 訓練データの評価
@@ -171,11 +165,13 @@ def evaluations(model, x_train, x_test, y_train, y_test):
     test_pred = model.predict(x_test)
     test_val = {func.__name__: func(y_test, test_pred) for func in evaluate}
     evals = pd.DataFrame((train_val, test_val), index=['train', 'test'])
+    print('-'*20, '評価結果', '-'*20)
     display(evals)
     return evals
 
 
-def ensemble_prediction(models, x, y):
+# K_foldによる予測
+def k_fold_prediction(models, x):
     try:
         predict = [model.predict_proba(x) for model in models]
         predict_sum = np.sum(predict, axis=0)
@@ -183,10 +179,21 @@ def ensemble_prediction(models, x, y):
             [np.where(pre[0] < pre[1], 1, 0) for pre in predict_sum]
             )
     except AttributeError:
-        print('########## 確率で出力するようパラメータもしくはモデルを設定することを推奨 ############')
+        print('########## 確率で出力するようパラメータもしくはモデルを選択することを推奨 ############')
         predict = [model.predict(x) for model in models]
         predict_sum = np.sum(predict, axis=0)
         ensemble_prediction = np.array(
                 [np.where(len(models)//2 <= pre, 1, 0) for pre in predict_sum]
                 )
     return ensemble_prediction
+
+
+# 予測値を入力して評価する場合（アンサンブルなどで）
+def ensemble_evals(ensemble_pred, target):
+    evaluate = [accuracy_score, precision_score, recall_score, f1_score]
+    # 訓練データの評価
+    ensemble = {func.__name__: func(target, ensemble_pred) for func in evaluate}
+    evals = pd.DataFrame((ensemble), index=['ensemble'])
+    print('-'*20, 'ensemble', '-'*20)
+    display(evals)
+    return None
