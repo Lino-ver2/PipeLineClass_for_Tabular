@@ -3,5 +3,6 @@ __pycache__/
 models/
 .ipynb_checkpoints/
 課題.ipynb
+kayano.py
 .DS_Store
 memo.ipynb

@@ -117,40 +117,44 @@ class PipeLine(object):
             print(kf.get_n_splits)
         return packs
 
-    def training(self, valid, Model, valid_args={}, params={}, view=True):
+    def training(self, valid, model, valid_args={}, params={}, view=True):
         if view:
             print('-'*20, '使用された特徴量', '-'*20)
             display(self.df_num.head(self.viewer_row))
 
         if valid == 'fold_out_split':
             packs = self.fold_out_split(**valid_args)
-            model = Model(**params)
-            model.fit(packs[0], packs[2])
-            evaluations(model, *packs)
-            return model
+            train_model = model(**params)
+            train_model.fit(packs[0], packs[2])
+            evaluations(train_model, *packs)
+            return train_model
 
         if valid == 'k_fold':
             packs = self.k_fold(**valid_args)
             models = []
             for i, pack in enumerate(packs):
-                model = Model(**params)
-                model.fit(pack[0], pack[2].reshape(-1))
+                train_model = model(**params)
+                train_model.fit(pack[0], pack[2].reshape(-1))
                 print('-'*20, f'model{i} predict', '-'*20)
-                evaluations(model, *pack)
-                models.append(model)
+                evaluations(train_model, *pack)
+                models.append(train_model)
             return models
 
 
 # グリッドサーチの関数
-def grid_serch_cv(pack, param_grid, model, score='accuracy'):
-    gs_model = GridSearchCV(estimator=model(),
+def grid_search_cv(pack, param_grid, model, model_arg={}, score='accuracy'):
+    gs_model = GridSearchCV(estimator=model(**model_arg),
                             param_grid=param_grid,  # 設定した候補を代入
                             scoring=score,  # デフォルトではaccuracyを基準に探してくれる
                             refit=True,
                             cv=10,
                             n_jobs=-1)
     # 訓練データで最適なパラメータを交差検証する
-    gs_model.fit(pack[0], pack[2])  # x_train = pack[0], y_train = pack[2]
+    if model.__name__ == 'XGBClassifier':
+        eval_set = [(pack[1], pack[3])]  # x_train, x_test, y_train, y_test = pack
+        gs_model.fit(pack[0], pack[2], eval_set=eval_set, verbose=False)
+    else:
+        gs_model.fit(pack[0], pack[2])
     evaluations(gs_model, *pack)
     return gs_model
 
