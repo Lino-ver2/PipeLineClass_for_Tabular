@@ -42,11 +42,12 @@ class PipeLine(object):
     return: x_train, x_test, y_train, y_test
     """
 
-    def __init__(self):
+    def __init__(self, train_flg=True):
         self.df: pd.DataFrame = None
         self.df_num: pd.DataFrame = None
         self.df_cat: pd.DataFrame = None
         self.df_target: pd.DataFrame = None
+        self.train_flg = train_flg  # 正解ラベルのないテストデータはFalseを設定
         self.viewer = False  # 更新したカラムの表示を切り替え
         self.viewer_row = 5  # 表示カラムの行数
         self.random_seed = 42  # 乱数シード値
@@ -57,14 +58,13 @@ class PipeLine(object):
                  'FastingBS', 'MaxHR', 'ExerciseAngina', 'Oldpeak'],
                  categorical=['ChestPainType', 'RestingECG', 'ST_Slope'],
                  target=['HeartDisease'],
-                 train_flg=True  # 正解ラベルのないテストデータはFalseを設定
                  ) -> pd.DataFrame:
 
         self.df = data
         self.df_num = data[numerical]
         self.df_cat = data[categorical]
         # 正解ラベルが与えられない本番環境では引数からFalseにすること
-        if train_flg:
+        if self.train_flg:
             self.df_target = data[target]
         return self.df_num
 
@@ -87,7 +87,8 @@ class PipeLine(object):
             display(self.df_num.head(self.viewer_row))
         return None
 
-    def fold_out_split(self, test_size=0.3, to_array=True) -> np.ndarray:
+
+    def fold_out_split(self, test_size=0.3, to_array=False) -> np.ndarray:
         pack = train_test_split(self.df_num,  self.df_target,
                                 test_size=test_size,
                                 random_state=self.random_seed)
@@ -150,7 +151,7 @@ def grid_search_cv(pack, param_grid, model, model_arg={}, score='accuracy'):
                             cv=10,
                             n_jobs=-1)
     # 訓練データで最適なパラメータを交差検証する
-    if model.__name__ == 'XGBClassifier':
+    if model.__name__ == 'XGBClassifier':  # early_stoppingのためにeval_setを用意
         eval_set = [(pack[1], pack[3])]  # x_train, x_test, y_train, y_test = pack
         gs_model.fit(pack[0], pack[2], eval_set=eval_set, verbose=False)
     else:
