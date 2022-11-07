@@ -142,6 +142,21 @@ class PipeLine(object):
             return models
 
 
+# 前処理
+def df_copy(df, func, columns):
+    df_c = df.copy()  
+    df_c[columns] = func
+    return df_c
+
+
+def train_or_test(pipe, train_flg, split_kwrg={}):
+    if train_flg:
+        pack = pipe.fold_out_split(**split_kwrg)
+        return pack
+    else:
+        return pipe.df_num
+
+
 # グリッドサーチの関数
 def grid_search_cv(pack, param_grid, model, model_arg={}, score='accuracy'):
     gs_model = GridSearchCV(estimator=model(**model_arg),
@@ -202,3 +217,17 @@ def ensemble_evals(ensemble_pred, target):
     print('-'*20, 'ensemble', '-'*20)
     display(evals)
     return None
+
+
+def test_eval(train_models, pipe_lines):
+    predicts = {}
+    for key in train_models.keys():
+        model = train_models[key]
+        scores = []
+        for pipe in pipe_lines:
+            x = data_set[pipe.__name__]
+            pred = model[pipe.__name__].predict(x)
+            score = accuracy_score(df_y.values, pred)
+            scores.append(score)
+        predicts[key] = scores
+    return pd.DataFrame(predicts, index=[pipe.__name__ for pipe in pipe_lines])
