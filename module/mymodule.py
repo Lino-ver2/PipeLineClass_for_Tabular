@@ -27,19 +27,6 @@ class PipeLine(object):
     numerical: 数値データのカラム名  (list[str])
     categorical: カテゴリデータのカラム名  (list[str])
     target:
-
-    standard_scaler:
-    アトリビュートのdf_numを標準化する
-    （引数）
-    view: 標準化したdf_numを確認できる
-
-    one_hot:
-    指定したカラムのdf_catをワンホット化してdf_numにconcatする
-    （引数）
-    columns: ワンホット化したいカラム名
-    concat: Trueの場合はアトリビュートのself.df_numに連結し更新する
-    view: ワンホットされたデータがdf_numにconcatされているのを確認できる
-    return: x_train, x_test, y_train, y_test
     """
 
     def __init__(self, train_flg=True):
@@ -144,7 +131,7 @@ class PipeLine(object):
 
 # 前処理
 def df_copy(df, func, columns):
-    df_c = df.copy()  
+    df_c = df.copy()
     df_c[columns] = func
     return df_c
 
@@ -208,7 +195,7 @@ def k_fold_prediction(models, x):
     return ensemble_prediction
 
 
-# 予測値を入力して評価する場合（アンサンブルなどで）
+# 予測値を入力して評価する関数
 def ensemble_evals(ensemble_pred, target):
     evaluate = [accuracy_score, precision_score, recall_score, f1_score]
     # 訓練データの評価
@@ -219,7 +206,21 @@ def ensemble_evals(ensemble_pred, target):
     return None
 
 
-def test_eval(train_models, pipe_lines):
+# 最適パラメータでの再訓練用関数
+def best_parameters(train_models, pipe_lines):
+    parameters = {}
+    for key in train_models.keys():
+        model = train_models[key]
+        best_params = {}
+        for pipe in pipe_lines:
+            best = model[pipe.__name__].best_params_
+            best_params[pipe.__name__] = best
+        parameters[key] = best_params
+    return parameters
+
+
+# サブミット用の評価関数
+def test_eval(train_models, pipe_lines, data_set, y):
     predicts = {}
     for key in train_models.keys():
         model = train_models[key]
@@ -227,7 +228,7 @@ def test_eval(train_models, pipe_lines):
         for pipe in pipe_lines:
             x = data_set[pipe.__name__]
             pred = model[pipe.__name__].predict(x)
-            score = accuracy_score(df_y.values, pred)
+            score = accuracy_score(y.values, pred)
             scores.append(score)
         predicts[key] = scores
     return pd.DataFrame(predicts, index=[pipe.__name__ for pipe in pipe_lines])
