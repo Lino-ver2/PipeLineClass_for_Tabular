@@ -134,3 +134,36 @@ def pipe_8(df, train_flg, split_kwrg, retrain=False):
         return pipe.df_num, pipe.df_target
     pack = train_or_test(pipe, train_flg, split_kwrg)
     return pack
+
+
+def pipe_9(df, train_flg, split_kwrg, retrain=False):
+    print('Onehot Standard(pipe_9)'.center(75))
+    pipe = PipeLine()
+    pipe.train_flg = train_flg
+    pipe(df)
+    pipe.one_hot(pipe.df_cat.columns)
+    display(pipe.df_num.head(3))
+    pipe.standard_scaler()
+    
+    if retrain:
+        return pipe.df_num, pipe.df_target
+    pack = train_or_test(pipe, train_flg, split_kwrg)
+    return pack
+
+
+def pipe_10(df, train_flg, split_kwrg, retrain=False):
+    print('CholestMean AgeCat Onehot Standard(pipe_10)'.center(75))
+    df = cholesterol_mean(df)
+    df = age_categolize(df)
+
+    pipe = PipeLine()
+    pipe.train_flg = train_flg
+    pipe(df)
+    pipe.one_hot(pipe.df_cat.columns)
+    display(pipe.df_num.head(3))
+    pipe.standard_scaler()
+    
+    if retrain:
+        return pipe.df_num, pipe.df_target
+    pack = train_or_test(pipe, train_flg, split_kwrg)
+    return pack
