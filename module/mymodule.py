@@ -39,17 +39,21 @@ class PipeLine(object):
         self.viewer_row = 5  # 表示カラムの行数
         self.random_seed = 42  # 乱数シード値
 
-    def __call__(self,
-                 data: pd.DataFrame,
-                 numerical=['Age', 'Sex', 'RestingBP', 'Cholesterol',\
-                 'FastingBS', 'MaxHR', 'ExerciseAngina', 'Oldpeak'],
-                 categorical=['ChestPainType', 'RestingECG', 'ST_Slope'],
-                 target=['HeartDisease'],
-                 ) -> pd.DataFrame:
-
+    def __call__(self, data: pd.DataFrame, target='HeartDisease') -> pd.DataFrame:
+        if self.train_flg:
+            df = data.copy().drop(target, axis=1)
+        else:
+            df = data.copy()
+        num, cat = [], []
+        for column in df.columns:
+            if df.dtypes[column] == 'O':
+                cat.append(column)
+            else:
+                num.append(column)
+        
         self.df = data
-        self.df_num = data[numerical]
-        self.df_cat = data[categorical]
+        self.df_num = data[num]
+        self.df_cat = data[cat]
         # 正解ラベルが与えられない本番環境では引数からFalseにすること
         if self.train_flg:
             self.df_target = data[target]
@@ -150,7 +154,7 @@ def grid_search_cv(pack, param_grid, model, model_arg={}, score='accuracy'):
                             param_grid=param_grid,  # 設定した候補を代入
                             scoring=score,  # デフォルトではaccuracyを基準に探してくれる
                             refit=True,
-                            cv=10,
+                            cv=3,
                             n_jobs=-1)
     # 訓練データで最適なパラメータを交差検証する
     if model.__name__ == 'XGBClassifier':  # early_stoppingのためにeval_setを用意
