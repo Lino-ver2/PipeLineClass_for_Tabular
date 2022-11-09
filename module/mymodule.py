@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -217,22 +218,51 @@ def best_parameters(train_models, pipe_lines):
         model = train_models[key]
         best_params = {}
         for pipe in pipe_lines:
-            best = model[pipe.__name__].best_params_
-            best_params[pipe.__name__] = best
+            try:
+                best = model[pipe.__name__].best_params_
+                best_params[pipe.__name__] = best
+            except KeyError:
+                pass
         parameters[key] = best_params
     return parameters
+
+
+def retrained(retrain, pipe_lines, data_set, best_param, file_name):
+    retrained = {}
+    for re_tr in retrain:
+        retrained[re_tr.__name__] = {}
+        for pipe in pipe_lines:
+            x, y = data_set[pipe.__name__]
+            try:
+                param = best_param[re_tr.__name__][pipe.__name__]
+                model = re_tr(**param)
+                model.fit(x.values, y.values.reshape(-1))
+                retrained[re_tr.__name__][pipe.__name__] = model
+                with open(f'./data/retrained_{file_name}.pkl', 'wb') as f:
+                    pickle.dump(retrained, f)
+            except KeyError:
+                pass
+    return retrained
 
 
 # サブミット用の評価関数
 def test_eval(train_models, pipe_lines, data_set, y):
     predicts = {}
     for key in train_models.keys():
-        model = train_models[key]
-        scores = []
-        for pipe in pipe_lines:
-            x = data_set[pipe.__name__]
-            pred = model[pipe.__name__].predict(x)
-            score = accuracy_score(y.values, pred)
-            scores.append(score)
-        predicts[key] = scores
-    return pd.DataFrame(predicts, index=[pipe.__name__ for pipe in pipe_lines])
+        if train_models[key] != {}:
+            model = train_models[key]
+            scores = []
+            index = []
+            for pipe in pipe_lines:
+                try:
+                    x = data_set[pipe.__name__]
+                    pred = model[pipe.__name__].predict(x)
+                    score = accuracy_score(y.values, pred)
+                    scores.append(score)
+                    index.append(pipe.__name__)
+                except KeyError:
+                    pass
+            predicts[key] = scores
+        else:
+            pass
+    return pd.DataFrame(predicts, index=index)

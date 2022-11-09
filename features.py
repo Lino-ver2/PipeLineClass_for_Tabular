@@ -54,7 +54,7 @@ def pipe_3(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_4(df, train_flg, split_kwrg, retrain=False):
-    print('AgeCAt Standard(pipe_4)'.center(75))
+    print('AgeCat Standard(pipe_4)'.center(75))
     df = age_categolize(df)
     
     pipe = PipeLine()
@@ -163,6 +163,81 @@ def pipe_10(df, train_flg, split_kwrg, retrain=False):
     display(pipe.df_num.head(3))
     pipe.standard_scaler()
     
+    if retrain:
+        return pipe.df_num, pipe.df_target
+    pack = train_or_test(pipe, train_flg, split_kwrg)
+    return pack
+
+
+def pipe_11(df, train_flg, split_kwrg, retrain=False):
+    print('CholCut(pipe_11)'.center(75))
+    if train_flg:
+        df = cholestrol_zero(df)
+
+    pipe = PipeLine()
+    pipe.train_flg = train_flg
+    pipe(df)
+    display(pipe.df_num.head(3))
+    pipe.standard_scaler()
+
+    if retrain:
+        return pipe.df_num, pipe.df_target
+    pack = train_or_test(pipe, train_flg, split_kwrg)
+    return pack
+
+
+def pipe_12(df, train_flg, split_kwrg, retrain=False):
+    print('CholCut Onehot(pipe_12)'.center(75))
+    if train_flg:
+        df = cholestrol_zero(df)
+
+    pipe = PipeLine()
+    pipe.train_flg = train_flg
+    pipe(df)
+    pipe.one_hot(pipe.df_cat.columns)
+    display(pipe.df_num.head(3))
+    pipe.standard_scaler()
+
+    if retrain:
+        return pipe.df_num, pipe.df_target
+    pack = train_or_test(pipe, train_flg, split_kwrg)
+    return pack
+
+
+def pipe_13(df, train_flg, split_kwrg, retrain=False):
+    print('DropByShap(pipe_13)'.center(75))
+
+    pipe = PipeLine()
+    pipe.train_flg = train_flg
+    pipe(df)
+    pipe.one_hot(pipe.df_cat.columns)
+    columns = ['Age', 'Sex', 'Cholesterol', 'FastingBS', 'MaxHR', 'Oldpeak',\
+               'ChestPainType_ASY', 'ST_Slope_Flat', 'ST_Slope_Up']
+    pipe.df_num = pipe.df_num[columns]
+    display(pipe.df_num.head(3))
+    pipe.standard_scaler()
+
+    if retrain:
+        return pipe.df_num, pipe.df_target
+    pack = train_or_test(pipe, train_flg, split_kwrg)
+    return pack
+
+
+def pipe_14(df, train_flg, split_kwrg, retrain=False):
+    print('ZeroCat DropByShap(pipe_14)'.center(75))
+    if train_flg:
+        df = cholestrol_zero(df)
+    
+    pipe = PipeLine()
+    pipe.train_flg = train_flg
+    pipe(df)
+    pipe.one_hot(pipe.df_cat.columns)
+    columns = ['Age', 'Sex', 'Cholesterol', 'FastingBS', 'MaxHR', 'Oldpeak',\
+               'ChestPainType_ASY', 'ST_Slope_Flat', 'ST_Slope_Up']
+    pipe.df_num = pipe.df_num[columns]
+    display(pipe.df_num.head(3))
+    pipe.standard_scaler()
+
     if retrain:
         return pipe.df_num, pipe.df_target
     pack = train_or_test(pipe, train_flg, split_kwrg)
