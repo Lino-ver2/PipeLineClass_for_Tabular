@@ -1,3 +1,4 @@
+import pickle
 from pathlib import Path
 import sys
 
@@ -12,7 +13,7 @@ def pipe_1(df, train_flg, split_kwrg, retrain=False):
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
 
     if retrain:
@@ -28,7 +29,7 @@ def pipe_2(df, train_flg, split_kwrg, retrain=False):
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
 
     if retrain:
@@ -44,7 +45,7 @@ def pipe_3(df, train_flg, split_kwrg, retrain=False):
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
 
     if retrain:
@@ -60,7 +61,7 @@ def pipe_4(df, train_flg, split_kwrg, retrain=False):
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
 
     if retrain:
@@ -78,7 +79,7 @@ def pipe_5(df, train_flg, split_kwrg, retrain=False):
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
     
     if retrain:
@@ -95,7 +96,7 @@ def pipe_6(df, train_flg, split_kwrg, retrain=False):
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
     
     if retrain:
@@ -111,7 +112,7 @@ def pipe_7(df, train_flg, split_kwrg, retrain=False):
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
     
     if retrain:
@@ -127,7 +128,7 @@ def pipe_8(df, train_flg, split_kwrg, retrain=False):
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
     
     if retrain:
@@ -142,7 +143,7 @@ def pipe_9(df, train_flg, split_kwrg, retrain=False):
     pipe.train_flg = train_flg
     pipe(df)
     pipe.one_hot(pipe.df_cat.columns)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
     
     if retrain:
@@ -160,7 +161,7 @@ def pipe_10(df, train_flg, split_kwrg, retrain=False):
     pipe.train_flg = train_flg
     pipe(df)
     pipe.one_hot(pipe.df_cat.columns)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
     
     if retrain:
@@ -177,7 +178,7 @@ def pipe_11(df, train_flg, split_kwrg, retrain=False):
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
 
     if retrain:
@@ -195,7 +196,7 @@ def pipe_12(df, train_flg, split_kwrg, retrain=False):
     pipe.train_flg = train_flg
     pipe(df)
     pipe.one_hot(pipe.df_cat.columns)
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
 
     if retrain:
@@ -214,7 +215,7 @@ def pipe_13(df, train_flg, split_kwrg, retrain=False):
     columns = ['Age', 'Sex', 'Cholesterol', 'FastingBS', 'MaxHR', 'Oldpeak',\
                'ChestPainType_ASY', 'ST_Slope_Flat', 'ST_Slope_Up']
     pipe.df_num = pipe.df_num[columns]
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
     pipe.standard_scaler()
 
     if retrain:
@@ -224,7 +225,7 @@ def pipe_13(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_14(df, train_flg, split_kwrg, retrain=False):
-    print('ZeroCat DropByShap(pipe_14)'.center(75))
+    print('CholCut DropByShap(pipe_14)'.center(75))
     if train_flg:
         df = cholestrol_zero(df)
     
@@ -235,7 +236,32 @@ def pipe_14(df, train_flg, split_kwrg, retrain=False):
     columns = ['Age', 'Sex', 'Cholesterol', 'FastingBS', 'MaxHR', 'Oldpeak',\
                'ChestPainType_ASY', 'ST_Slope_Flat', 'ST_Slope_Up']
     pipe.df_num = pipe.df_num[columns]
-    display(pipe.df_num.head(3))
+    display(pipe.df_num.head())
+    pipe.standard_scaler()
+
+    if retrain:
+        return pipe.df_num, pipe.df_target
+    pack = train_or_test(pipe, train_flg, split_kwrg)
+    return pack
+
+
+def pipe_15(df, train_flg, split_kwrg, retrain=False):
+    print('Chol Regression(pipe_15)'.center(75))
+    pipe = PipeLine()
+    pipe.train_flg = train_flg
+    pipe(df)
+    pipe.one_hot(pipe.df_cat.columns)
+    pipe.df_num
+    
+    with open('./data/reg_model.pkl', 'rb') as f:
+        reg_model = pickle.load(f)
+    
+    pred_trg = pipe.df_num[pipe.df_num.Cholesterol==0]
+    pred_trg = pred_trg.drop('Cholesterol', axis=1)
+    pred = reg_model.predict(pred_trg)
+    pipe.df_num.loc[pipe.df_num.Cholesterol==0, 'Cholesterol'] = pred.astype('int')
+    display(pipe.df_num.head())
+
     pipe.standard_scaler()
 
     if retrain:

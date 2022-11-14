@@ -51,13 +51,13 @@ class PipeLine(object):
                 cat.append(column)
             else:
                 num.append(column)
-        
+
         self.df = data
-        self.df_num = data[num]
-        self.df_cat = data[cat]
+        self.df_num = data[num].reset_index(drop=True)
+        self.df_cat = data[cat].reset_index(drop=True)
         # 正解ラベルが与えられない本番環境では引数からFalseにすること
         if self.train_flg:
-            self.df_target = data[target]
+            self.df_target = data[target].reset_index(drop=True)
         return self.df_num
 
     def standard_scaler(self):
@@ -146,7 +146,10 @@ def train_or_test(pipe, train_flg, split_kwrg={}):
         pack = pipe.fold_out_split(**split_kwrg)
         return pack
     else:
-        return pipe.df_num
+        if split_kwrg['to_array']:
+            return pipe.df_num.values
+        else:
+            return pipe.df_num
 
 
 # グリッドサーチの関数
