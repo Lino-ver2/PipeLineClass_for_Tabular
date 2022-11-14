@@ -24,7 +24,7 @@ def pipe_1(df, train_flg, split_kwrg, retrain=False):
 
 def pipe_2(df, train_flg, split_kwrg, retrain=False):
     df = stSlope_categolize(df)
-    print('StSlpoeCat Standard(pipe_2)'.center(75))
+    print('StSlpoeCat(pipe_2)'.center(75))
 
     pipe = PipeLine()
     pipe.train_flg = train_flg
@@ -39,7 +39,7 @@ def pipe_2(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_3(df, train_flg, split_kwrg, retrain=False):
-    print('CholestMean Standard(pipe_3)'.center(75))
+    print('CholestMean(pipe_3)'.center(75))
     df = cholesterol_mean(df)
 
     pipe = PipeLine()
@@ -55,7 +55,7 @@ def pipe_3(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_4(df, train_flg, split_kwrg, retrain=False):
-    print('AgeCat Standard(pipe_4)'.center(75))
+    print('AgeCat(pipe_4)'.center(75))
     df = age_categolize(df)
     
     pipe = PipeLine()
@@ -71,7 +71,7 @@ def pipe_4(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_5(df, train_flg, split_kwrg, retrain=False):
-    print('StSlpoeCat CholestMean AgeCAt Standard(pipe_5)'.center(75))
+    print('StSlpoeCat CholestMean AgeCAt(pipe_5)'.center(75))
     df = stSlope_categolize(df)
     df = cholesterol_mean(df)
     df = age_categolize(df)
@@ -90,7 +90,7 @@ def pipe_5(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_6(df, train_flg, split_kwrg, retrain=False):
-    print('RestingBpCat Standard(pipe_6)'.center(75))
+    print('RestingBpCat(pipe_6)'.center(75))
     df = restingBP_categorize(df)
     
     pipe = PipeLine()
@@ -106,7 +106,7 @@ def pipe_6(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_7(df, train_flg, split_kwrg, retrain=False):
-    print('OldPeakCat Standard(pipe_7)'.center(75))
+    print('OldPeakCat(pipe_7)'.center(75))
     df = oldpeak_categolize(df)
     
     pipe = PipeLine()
@@ -122,7 +122,7 @@ def pipe_7(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_8(df, train_flg, split_kwrg, retrain=False):
-    print('RestingBpCat OldPeakCat Standard(pipe_8)'.center(75))
+    print('RestingBpCat OldPeakCat(pipe_8)'.center(75))
     df = oldpeak_categolize(df)
     
     pipe = PipeLine()
@@ -138,7 +138,7 @@ def pipe_8(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_9(df, train_flg, split_kwrg, retrain=False):
-    print('Onehot Standard(pipe_9)'.center(75))
+    print('Onehot(pipe_9)'.center(75))
     pipe = PipeLine()
     pipe.train_flg = train_flg
     pipe(df)
@@ -153,7 +153,7 @@ def pipe_9(df, train_flg, split_kwrg, retrain=False):
 
 
 def pipe_10(df, train_flg, split_kwrg, retrain=False):
-    print('CholestMean AgeCat Onehot Standard(pipe_10)'.center(75))
+    print('CholestMean AgeCat Onehot(pipe_10)'.center(75))
     df = cholesterol_mean(df)
     df = age_categolize(df)
 
