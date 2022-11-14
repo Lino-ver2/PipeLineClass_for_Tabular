@@ -4,8 +4,19 @@ import sys
 
 rank = 0 
 #sys.path[0] = f'{Path().resolve().parents[rank]}' # mymoduleが上の階層にある場合rankを調整してコメント解除
-from module.mymodule import PipeLine, train_or_test
+from module.mymodule import PipeLine
 from module.kayano import *
+
+
+def train_or_test(pipe, train_flg, split_kwrg):
+    if train_flg:
+        pack = pipe.fold_out_split(**split_kwrg)
+        return pack
+    else:
+        if split_kwrg['to_array']:
+            return pipe.df_num.values
+        else:
+            return pipe.df_num
 
 
 def pipe_1(df, train_flg, split_kwrg, retrain=False):

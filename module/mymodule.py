@@ -141,17 +141,6 @@ def df_copy(df, func, columns):
     return df_c
 
 
-def train_or_test(pipe, train_flg, split_kwrg={}):
-    if train_flg:
-        pack = pipe.fold_out_split(**split_kwrg)
-        return pack
-    else:
-        if split_kwrg['to_array']:
-            return pipe.df_num.values
-        else:
-            return pipe.df_num
-
-
 # グリッドサーチの関数
 def grid_search_cv(pack, param_grid, model, model_arg={}, score='accuracy'):
     gs_model = GridSearchCV(estimator=model(**model_arg),
