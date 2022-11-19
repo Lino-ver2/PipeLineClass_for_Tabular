@@ -1,10 +1,6 @@
 import pickle
-from pathlib import Path
-import sys
 
-rank = 0 
-#sys.path[0] = f'{Path().resolve().parents[rank]}' # mymoduleが上の階層にある場合rankを調整してコメント解除
-from module.mymodule import PipeLine
+from module.pipeline import PipeLine
 from module.kayano import *
 
 
