@@ -1,5 +1,5 @@
 import pickle
-from typing import List, Tuple, Dict
+from typing import Union, List, Tuple, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -19,10 +19,10 @@ class PipeLine(object):
         （引数）
         train_flg: 訓練時と推論時を識別するフラグ
         """
-        self.df: pd.DataFrame = None
-        self.df_num: pd.DataFrame = None
-        self.df_cat: pd.DataFrame = None
-        self.df_target: pd.DataFrame = None
+        self.df: Optional[pd.DataFrame] = None  # callからオリジナルデータが格納される
+        self.df_num: Optional[pd.DataFrame] = None  # callから数値データが格納される
+        self.df_cat: Optional[pd.DataFrame] = None  # callからカテゴリデータが格納される
+        self.df_target: Optional[pd.DataFrame] = None  # callで正解データを指定する
         self.train_flg: bool = train_flg  # 正解ラベルのないテストデータはFalseを設定
         self.viewer = False  # 更新したカラムの表示を切り替え
         self.viewer_row = 5  # 表示カラムの行数
@@ -34,7 +34,7 @@ class PipeLine(object):
                 target='HeartDisease'
                 ) -> pd.DataFrame:
         """
-        objectタイプを検出して数値データとカテゴリデータに分別してアトリビュートに格納する
+        objectタイプを検出して数値データとカテゴリデータに分別しアトリビュートに格納する
         （引数）
         data: 使用するオリジナルデータ
         target: 正解データのカラム名
@@ -58,7 +58,7 @@ class PipeLine(object):
             self.df_target = data[target].reset_index(drop=True)
         return self.df_num
 
-    def standard_scaler(self):
+    def standard_scaler(self) -> None:
         """
         アトリビュートに格納された数値データを標準化する
         """
@@ -72,7 +72,7 @@ class PipeLine(object):
             display(self.df_num.head(self.viewer_row))
         return None
 
-    def one_hot(self, columns: List[str]):
+    def one_hot(self, columns: List[str]) -> None:
         """
         指定されたからカラム名をワンホットエンコードする
         （引数）
@@ -85,7 +85,11 @@ class PipeLine(object):
             display(self.df_num.head(self.viewer_row))
         return None
 
-    def fold_out_split(self, test_size=0.3, to_array=False) -> np.ndarray:
+    def fold_out_split(
+                    self,
+                    test_size=0.3,
+                    to_array=False
+                    ) -> Tuple[np.ndarray]:
         """
         アトリビュートに格納されている数値データをホールドアウト法で分割
         （引数）
@@ -119,13 +123,14 @@ class PipeLine(object):
         kf = KFold(
                     n_splits=n_splits,
                     shuffle=True,
-                    random_state=self.random_seed)
+                    random_state=self.random_seed
+                    )
         packs = []
         for train_index, test_index in kf.split(self.df_num):
-            x_tr, x_te = self.df_num.iloc[train_index],\
-                         self.df_num.iloc[test_index]
-            y_tr, y_te = self.df_target.iloc[train_index],\
-                         self.df_target.iloc[test_index]
+            x_tr = self.df_num.iloc[train_index]
+            x_te = self.df_num.iloc[test_index]
+            y_tr = self.df_target.iloc[train_index]
+            y_te = self.df_target.iloc[test_index]
             pack = (x_tr, x_te,  y_tr, y_te)
             if to_array:
                 pack = [unpack.values for unpack in pack]
@@ -137,16 +142,18 @@ class PipeLine(object):
     def training(
                 self,
                 valid: str,
-                model,
+                model: object,
                 valid_args={},
                 params={},
-                view=True):
+                view=True
+                ) -> object:
         """
         pipelineでのモデル訓練
         （引数）
         valid: fold_out_splitもしくはk_foldを指定
         model: fitメソッドに対応したモデルクラス
         valid_args: pipelineの検証メソッドの引数
+        params: モデルパラメータを指定
         """
         if view:
             print('-'*20, '使用された特徴量', '-'*20)
@@ -171,15 +178,22 @@ class PipeLine(object):
             return models
 
 
-# 前処理
-def df_copy(df, func, columns):
-    df_c = df.copy()
-    df_c[columns] = func
-    return df_c
-
-
 # グリッドサーチの関数
-def grid_search_cv(pack, param_grid, model, model_arg={}, score='accuracy'):
+def grid_search_cv(
+                    pack: List[np.ndarray],
+                    param_grid: Dict[str, List[Union[str, int, float]]],
+                    model: object,
+                    model_arg={},
+                    score='accuracy'
+                    ) -> object:
+    """
+    グリッドサーチ関数
+    （引数）
+    pack: 検証用データセット (x_train, x_test, y_train, y_test) = pack
+    param_grid: グリッドサーチの探索対象パラメータ
+    model: モデルクラス
+    model_arg: 探索対象以外のパラメータ
+    """
     gs_model = GridSearchCV(estimator=model(**model_arg),
                             param_grid=param_grid,  # 設定した候補を代入
                             scoring=score,  # デフォルトではaccuracyを基準に探してくれる
@@ -197,7 +211,19 @@ def grid_search_cv(pack, param_grid, model, model_arg={}, score='accuracy'):
 
 
 # 評価指標の関数
-def evaluations(model, x_train, x_test, y_train, y_test):
+def evaluations(
+                model: object,
+                x_train: np.ndarray,
+                x_test: np.ndarray,
+                y_train: np.ndarray,
+                y_test: np.ndarray
+                ) -> pd.DataFrame:
+    """
+    正解率、適合率、再現率、F1スコアをDataFrameで表示
+    （引数）
+    mdoel: 訓練済みモデル
+    x_train, x_test, y_train, y_test: モデル訓練に使用した前処理済みデータセット
+    """
     evaluate = [accuracy_score, precision_score, recall_score, f1_score]
     # 訓練データの評価
     train_pred = model.predict(x_train)
@@ -211,16 +237,21 @@ def evaluations(model, x_train, x_test, y_train, y_test):
     return evals
 
 
-# K_foldによる予測
-def k_fold_prediction(models, x):
-    try:
+def k_fold_prediction(models: object, x: np.ndarray) -> np.ndarray:
+    """
+    交差検証によるアンサンブル
+    （引数）
+    model: 訓練済みモデル
+    x: 前処理済み推論データ
+    """
+    try:  # probaによる出力が可能である場合
         predict = [model.predict_proba(x) for model in models]
         predict_sum = np.sum(predict, axis=0)
         ensemble_prediction = np.array(
             [np.where(pre[0] < pre[1], 1, 0) for pre in predict_sum]
             )
-    except AttributeError:
-        print('########## 確率で出力するようパラメータもしくはモデルを選択することを推奨 ############')
+    except AttributeError:  # probaによる出力が可能でない場合
+        print('確率で出力するようパラメータもしくはモデルを選択することを推奨'.center(100))
         predict = [model.predict(x) for model in models]
         predict_sum = np.sum(predict, axis=0)
         ensemble_prediction = np.array(
@@ -229,8 +260,16 @@ def k_fold_prediction(models, x):
     return ensemble_prediction
 
 
-# 予測値を入力して評価する関数
-def ensemble_evals(ensemble_pred, target):
+def ensemble_evals(
+                    ensemble_pred: np.ndarray,
+                    target: np.ndarray
+                    ) -> pd.DataFrame:
+    """
+    予測値を入力して評価する関数
+    （引数）
+    ensemble_pred: アンサンブルによる出力結果
+    target: 正解データ
+    """
     evaluate = [accuracy_score, precision_score, recall_score, f1_score]
     # 訓練データの評価
     ensemble = {func.__name__: func(target, ensemble_pred) for func in evaluate}
@@ -241,7 +280,16 @@ def ensemble_evals(ensemble_pred, target):
 
 
 # 最適パラメータでの再訓練用関数
-def best_parameters(train_models, pipe_lines):
+def best_parameters(
+                    train_models: Dict[str, object],
+                    pipe_lines: List[object]
+                    ) -> Dict[str, Dict[str, str]]:
+    """
+    訓練済みモデルから最適なパラメータを抽出
+    （引数）
+    train_models: 訓練済みモデルを格納した辞書
+    pipe_lines: 訓練に使用したデータセットオブジェクトを格納したリスト
+    """
     parameters = {}
     for key in train_models.keys():
         model = train_models[key]
@@ -256,7 +304,22 @@ def best_parameters(train_models, pipe_lines):
     return parameters
 
 
-def retrained(retrain, pipe_lines, data_set, best_param, file_name):
+def retrained(
+            retrain: List[object],
+            pipe_lines: List[object],
+            data_set: Dict[str, List[np.ndarray]],
+            best_param: Dict[str, Dict[str, Union[str, int, float]]],
+            file_name: str
+            ) -> Dict[str, object]:
+    """
+    テストデータの推論前に最適なパラメータでモデルの再訓練
+    （引数）
+    retrain: 再訓練対象のモデルオブジェクト
+    pipe_lines: 訓練に使用したデータセットオブジェクトを格納したリスト
+    data_set: 訓練医に使用したデータセット
+    best_param: 各モデルの最適なパラメータを格納した辞書
+    file_name: 再訓練したモデルを保存するファイル名
+    """
     retrained = {}
     for re_tr in retrain:
         retrained[re_tr.__name__] = {}
@@ -275,7 +338,20 @@ def retrained(retrain, pipe_lines, data_set, best_param, file_name):
 
 
 # サブミット用の評価関数
-def test_eval(train_models, pipe_lines, data_set, y):
+def test_eval(
+            train_models: Dict[str, object],
+            pipe_lines: List[object],
+            data_set: Dict[str, List[np.ndarray]],
+            y: np.ndarray
+            ) -> pd.DataFrame:
+    """
+    訓練済みモデルで正解率を評価
+    （引数）
+    train_model: 訓練済みモデルを格納した辞書
+    pipe_lines: 訓練に使用したデータセットオブジェクトを格納したリスト
+    data_set: 訓練医に使用したデータセット
+    y: 正解データ
+    """
     predicts = {}
     for key in train_models.keys():
         if train_models[key] != {}:
