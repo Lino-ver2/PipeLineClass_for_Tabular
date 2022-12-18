@@ -1,5 +1,5 @@
-from __future__ import annotations
 import pickle
+from typing import List, Tuple, Dict
 
 import numpy as np
 import pandas as pd
@@ -12,35 +12,33 @@ from sklearn.metrics import accuracy_score, precision_score, \
 
 
 class PipeLine(object):
-    """
-    __init__ :
-    アトリビュートで訓練データ、正解データを管理する
-    （引数）
-    df: callメソッドでオリジナルのデータが格納される
-    df_num: callで指定した数値データが格納される。クラスメソッドで上書きされる
-    df_cat: callで指定したカテゴリデータが格納される
-    viewer: bool, viewer_row :int 更新後のデータを表示する
-
-    __call__ :
-    インスタンスの生成時に引数でオリジナルデータを渡す
-    （引数）
-    data: 使用するオリジナルデータ  (pd.DataFrame)
-    numerical: 数値データのカラム名  (list[str])
-    categorical: カテゴリデータのカラム名  (list[str])
-    target:
-    """
 
     def __init__(self, train_flg=True):
+        """
+        アトリビュートで訓練データ、正解データを管理する
+        （引数）
+        train_flg: 訓練時と推論時を識別するフラグ
+        """
         self.df: pd.DataFrame = None
         self.df_num: pd.DataFrame = None
         self.df_cat: pd.DataFrame = None
         self.df_target: pd.DataFrame = None
-        self.train_flg = train_flg  # 正解ラベルのないテストデータはFalseを設定
+        self.train_flg: bool = train_flg  # 正解ラベルのないテストデータはFalseを設定
         self.viewer = False  # 更新したカラムの表示を切り替え
         self.viewer_row = 5  # 表示カラムの行数
         self.random_seed = 42  # 乱数シード値
 
-    def __call__(self, data: pd.DataFrame, target='HeartDisease') -> pd.DataFrame:
+    def __call__(
+                self,
+                data: pd.DataFrame,
+                target='HeartDisease'
+                ) -> pd.DataFrame:
+        """
+        objectタイプを検出して数値データとカテゴリデータに分別してアトリビュートに格納する
+        （引数）
+        data: 使用するオリジナルデータ
+        target: 正解データのカラム名
+        """
         if self.train_flg:
             df = data.copy().drop(target, axis=1)
         else:
@@ -61,6 +59,9 @@ class PipeLine(object):
         return self.df_num
 
     def standard_scaler(self):
+        """
+        アトリビュートに格納された数値データを標準化する
+        """
         columns = self.df_num.columns
         scaler = StandardScaler()
         scaler.fit(self.df_num)
@@ -71,7 +72,12 @@ class PipeLine(object):
             display(self.df_num.head(self.viewer_row))
         return None
 
-    def one_hot(self, columns: list[str]) -> pd.DataFrame:
+    def one_hot(self, columns: List[str]):
+        """
+        指定されたからカラム名をワンホットエンコードする
+        （引数）
+        columns: ワンホットするカラム名
+        """
         one_hotted = pd.get_dummies(self.df_cat[columns]).reset_index(drop=True)
         self.df_num = pd.concat((self.df_num, one_hotted), axis=1)
         if self.viewer:
@@ -79,8 +85,13 @@ class PipeLine(object):
             display(self.df_num.head(self.viewer_row))
         return None
 
-
     def fold_out_split(self, test_size=0.3, to_array=False) -> np.ndarray:
+        """
+        アトリビュートに格納されている数値データをホールドアウト法で分割
+        （引数）
+        test_size: 分割後のテストデータの割合
+        to_array: DataFrameかndarrayで出力するかを変更
+        """
         pack = train_test_split(self.df_num,  self.df_target,
                                 test_size=test_size,
                                 random_state=self.random_seed)
@@ -94,8 +105,21 @@ class PipeLine(object):
             print(f'y_train: {y_tr.shape} y_test: {y_te.shape}')
         return x_tr, x_te, y_tr, y_te
 
-    def k_fold(self, n_splits=5, to_array=True) -> list[list[np.ndarray]]:
-        kf = KFold(n_splits=n_splits, shuffle=True, random_state=self.random_seed)
+    def k_fold(
+                self,
+                n_splits=5,
+                to_array=True
+                ) -> List[List[np.ndarray, np.ndarray]]:
+        """
+        交差検証用のデータセットを出力。[[訓練データ, 正解データ]*分割数]
+        （引数）
+        n_split: 検証データの分割数
+        to_array: DataFrameかndarrayで出力するかを変更
+        """
+        kf = KFold(
+                    n_splits=n_splits,
+                    shuffle=True,
+                    random_state=self.random_seed)
         packs = []
         for train_index, test_index in kf.split(self.df_num):
             x_tr, x_te = self.df_num.iloc[train_index],\
@@ -110,7 +134,20 @@ class PipeLine(object):
             print(kf.get_n_splits)
         return packs
 
-    def training(self, valid, model, valid_args={}, params={}, view=True):
+    def training(
+                self,
+                valid: str,
+                model,
+                valid_args={},
+                params={},
+                view=True):
+        """
+        pipelineでのモデル訓練
+        （引数）
+        valid: fold_out_splitもしくはk_foldを指定
+        model: fitメソッドに対応したモデルクラス
+        valid_args: pipelineの検証メソッドの引数
+        """
         if view:
             print('-'*20, '使用された特徴量', '-'*20)
             display(self.df_num.head(self.viewer_row))
